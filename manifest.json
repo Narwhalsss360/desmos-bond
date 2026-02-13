@@ -6,7 +6,7 @@
     "web_accessible_resources": [
         {
             "resources": ["desmos.js"],
-            "matches": ["https://www.desmos.com/calculator/*"]
+            "matches": ["<all_urls>"]
         }
     ],
     "content_scripts": [
