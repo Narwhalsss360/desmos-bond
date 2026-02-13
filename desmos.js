@@ -1,3 +1,78 @@
+function toggleEditMode() {
+  document.querySelector(".dcg-action-toggle-edit").dispatchEvent(new Event("dcg-tap"));
+}
+
+function getExpressionInDOM(id) {
+  return document.querySelector(`[expr-id="${id}"]`);
+}
+
+function swapExpressionId(oldId, newId) {
+  const state = Calc.getState();
+  const expr = state.expressions.list.find(e => e.id === oldId);
+  if (!expr) {
+    throw Error(`There is no expression with id: ${oldId}`);
+  }
+  expr.id = newId;
+  if (expr.type === "folder") {
+    for (const expression of state.expressions.list) {
+      if (expression.folderId === oldId) {
+        expression.folderId = newId;
+      }
+    }
+  }
+  Calc.setState(state);
+}
+
+function constructExpressionActionButton(iconClass, ariaLabel) {
+  const hitAreaContainer = document.createElement("div");
+  hitAreaContainer.className = "dcg-tooltip-hit-area-container dcg-do-not-blur dcg-cursor-default";
+  hitAreaContainer.setAttribute("handleevent", true);
+  hitAreaContainer.setAttribute("tabIndex", -1);
+  hitAreaContainer.toggleAttribute("ontap", true);
+  hitAreaContainer.innerHTML = String.raw`<div class="dcg-tooltip-hit-area-container dcg-do-not-blur dcg-cursor-default" handleevent="true" tabindex="-1" ontap=""><span class="dcg-exp-action-button" handleevent="true" role="button" tabindex="0" aria-label="${ariaLabel}" ontap=""><i class="${iconClass}" aria-hidden="true"></i></span></div>`;
+  return hitAreaContainer;
+}
+
+function modifyEditActions() {
+  for (const expression of Calc.getExpressions()) {
+    const item = getExpressionInDOM(expression.id);
+    if (!item /*Not visible*/) {
+      continue;
+    }
+
+    const editActionsSpan = item.querySelector(".dcg-expression-edit-actions");
+    if (!editActionsSpan /*Not visible*/) {
+      continue;
+    }
+    const deleteContainer = editActionsSpan.querySelector(".dcg-delete-btn").parentNode;
+
+    const buttons = [];
+    if (!item.querySelector(".copy-latex-action-button") && expression.latex) {
+      const copyLatexButton = constructExpressionActionButton("dcg-icon-clipboard", "Copy latex");
+      copyLatexButton.classList.add("copy-latex-action-button");
+      copyLatexButton.addEventListener("keydown", () => navigator.clipboard.writeText(expression.latex));
+      copyLatexButton.addEventListener("click", () => navigator.clipboard.writeText(expression.latex));
+      buttons.push(copyLatexButton);
+    }
+
+    if (expression.id.startsWith("import") && !item.querySelector(".unlink-expression-action-button")) {
+      const unlinkExpressionButton = constructExpressionActionButton("dcg-icon-unlock", "Unlink import");
+      function unlink() {
+        swapExpressionId(expression.id, expression.id.substr("import".length));
+        toggleEditMode();
+      }
+      unlinkExpressionButton.classList.add("unlink-expression-action-button");
+      unlinkExpressionButton.addEventListener("keydown", unlink);
+      unlinkExpressionButton.addEventListener("click", unlink);
+      buttons.push(unlinkExpressionButton);
+    }
+
+    for (const button of buttons) {
+      editActionsSpan.insertBefore(button, deleteContainer);
+    }
+  }
+}
+
 async function fetchGraph(graphId) {
    return await (await fetch(`https://www.desmos.com/calculator/${graphId}`, {
     headers: {
@@ -128,3 +203,12 @@ function dispatchListener(evt) {
 }
 
 const demosBondCalcDispatcherListerId = Calc.controller.dispatcher.register(dispatchListener);
+
+document.addEventListener("desmos-bond-edit-mode-activated", () => {
+  modifyEditActions();
+  document.addEventListener("desmos-bond-expressions-in-dom-updated", modifyEditActions);
+})
+
+document.addEventListener("desmos-bond-edit-mode-deactivated", () => {
+  document.removeEventListener("desmos-bond-expressions-in-dom-updated", modifyEditActions);
+});
