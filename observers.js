@@ -4,10 +4,9 @@ const mainCalculatorContainer = Calc.domChangeDetector.elt
   .children[0];
 
 let inEditState = false;
-const expressionEachTemplateSpan = document.querySelector(".dcg-template-expressioneach");
 const editModeActivatedEvent = new CustomEvent("desmos-bond-edit-mode-activated", { detail: { observer: null } });
 const editModeDeactivatedEvent = new CustomEvent("desmos-bond-edit-mode-deactivated", { detail: { observer: null } });
-const expressionEachTemplateSpanObserver = new MutationObserver((mutationsList, observer) => {
+new MutationObserver((mutationsList, observer) => {
   for (const mutation of mutationsList) {
     if (mutation.type !== "attributes") {
       continue;
@@ -40,7 +39,7 @@ const savedGraphsLoadedEvent = new CustomEvent("desmos-bond-saved-graphs-opened"
     graphsList: null
   }
 })
-const modalContainerObserver = new MutationObserver((mutationsList, observer) => {
+new MutationObserver((mutationsList, observer) => {
   for (const mutation of mutationsList) {
     if (mutation.type !== "childList") {
       continue;
@@ -90,7 +89,7 @@ const shareContainerOpenedEvent = new CustomEvent("desmos-bond-share-container-o
     content: null
   }
 });
-const shareContainerObserver = new MutationObserver((mutationsList, observer) => {
+new MutationObserver((mutationsList, observer) => {
   for (const mutation of mutationsList) {
     for (const newNode of mutation.addedNodes) {
       if (newNode.nodeType !== Node.ELEMENT_NODE) {
@@ -117,7 +116,7 @@ const addExpressionContainerOpenedEvent = new CustomEvent("desmos-bond-add-expre
     interior: null
   }
 });
-const addExpressionContainerObserver = new MutationObserver((mutationsList, observer) => {
+new MutationObserver((mutationsList, observer) => {
   for (const mutation of mutationsList) {
     for (const newNode of mutation.addedNodes) {
       if (newNode.nodeType !== Node.ELEMENT_NODE) {
@@ -135,3 +134,17 @@ const addExpressionContainerObserver = new MutationObserver((mutationsList, obse
     }
   }
 }).observe(addExpressionContainer, { childList: true });
+
+
+const expressionEachTemplateSpan = document.querySelector(".dcg-template-expressioneach");
+const expressionsInDOMUpdatedEvent = new CustomEvent("desmos-bond-expressions-in-dom-updated", {
+  detail: {
+    observer: null,
+    span: null
+  }
+});
+new MutationObserver((_, observer) => {
+  expressionsInDOMUpdatedEvent.detail.observer = observer;
+  expressionsInDOMUpdatedEvent.detail.span = expressionEachTemplateSpan;
+  document.dispatchEvent(expressionsInDOMUpdatedEvent);
+}).observe(expressionEachTemplateSpan, { childList: true })
