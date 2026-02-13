@@ -2,6 +2,46 @@ function toggleEditMode() {
   document.querySelector(".dcg-action-toggle-edit").dispatchEvent(new Event("dcg-tap"));
 }
 
+function closeModal() {
+  document.querySelector(".dcg-shared-close-cross").dispatchEvent(new Event("dcg-tap"));
+}
+
+function findParent(elem, predicate) {
+  const parent = elem.parentNode;
+  if (parent.nodeType !== Node.ELEMENT_NODE) {
+    return null;
+  }
+  if (predicate(parent)) {
+    return parent;
+  }
+  return findParent(parent, predicate);
+}
+
+function getGraphTitle() {
+  return document.getElementById("dcg-graph-title-text").innerText;
+}
+
+let cachedId = null;
+function getGraphId() {
+  if (cachedId === null) {
+    cachedId = JSON.parse(document.body.getAttribute("data-load-data")).graph.hash;
+  }
+  return cachedId;
+}
+
+function downloadJSON(exportObj, exportName) {
+  const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: "application/json" });
+
+  const url = URL.createObjectURL(blob);
+  const downloadAnchorNode = document.createElement('a');
+  downloadAnchorNode.setAttribute("href", url);
+  downloadAnchorNode.setAttribute("download", exportName + ".json");
+  document.body.appendChild(downloadAnchorNode); // Required for Firefox to work correctly
+  downloadAnchorNode.click();
+  downloadAnchorNode.remove();
+  URL.revokeObjectURL(url);
+}
+
 function getExpressionInDOM(id) {
   return document.querySelector(`[expr-id="${id}"]`);
 }
@@ -31,6 +71,14 @@ function constructExpressionActionButton(iconClass, ariaLabel) {
   hitAreaContainer.toggleAttribute("ontap", true);
   hitAreaContainer.innerHTML = String.raw`<div class="dcg-tooltip-hit-area-container dcg-do-not-blur dcg-cursor-default" handleevent="true" tabindex="-1" ontap=""><span class="dcg-exp-action-button" handleevent="true" role="button" tabindex="0" aria-label="${ariaLabel}" ontap=""><i class="${iconClass}" aria-hidden="true"></i></span></div>`;
   return hitAreaContainer;
+}
+
+function constructDropdownOption(iconClass, text, red = false) {
+  const listitem = document.createElement("div");
+  listitem.role = "listitem";
+  listitem.className = "dropdown-option-container";
+  listitem.innerHTML = String.raw`<div role="link" tabindex="0" id="option-duplicate" class="${(red ? "dcg-red-dropdown-option" : "dcg-standard-link-styling")} dcg-dropdown-choice" ontap=""><div class="dcg-option-icon-container"><i aria-hidden="true" class="${iconClass}" dcg-option-icon"></i></div><span class="option-title"><span class="dcg-mixed-text-math"><span class="dcg-label-raw-text">${text}</span></span></span></div>`;
+  return listitem;
 }
 
 function modifyEditActions() {
@@ -71,6 +119,61 @@ function modifyEditActions() {
       editActionsSpan.insertBefore(button, deleteContainer);
     }
   }
+}
+
+function modifyShareModal(evt) {
+  const shareYourGraphContent = evt.detail.content.querySelector(".dcg-share-menu__content--share-your-graph");
+  console.log(shareYourGraphContent);
+  const exportActionSection = document.createElement("div");
+  exportActionSection.className = "dcg-share-menu__alternative-action-section";
+  exportActionSection.innerHTML = String.raw`<div style="display: contents;" class="">or <a class="dcg-share-menu__link dcg-blue-link" role="link" tabindex="0" ontap="">Export Graph State</a>.</div>`;
+  const exportA = exportActionSection.querySelector("a");
+  function exportClick() {
+    downloadJSON(Calc.getState(), getGraphTitle());
+    shareContainer.children[0].dispatchEvent(new Event("dcg-tap"));
+  }
+  exportA.addEventListener("click", exportClick);
+  exportA.addEventListener("keydown", exportClick);
+  shareYourGraphContent.appendChild(exportActionSection);
+}
+
+function modifySavedGraphOptions(evt) {
+  const savedGraphLink = findParent(evt.detail.dropdown, node => node.tagName.toUpperCase() === "A");
+  if (!savedGraphLink /*Not a graph*/) {
+    return;
+  }
+  const graphId = savedGraphLink.id.substr(8);
+
+  if (savedGraphLink.classList.contains("desmos-bond-modified")) {
+    return;
+  }
+  savedGraphLink.classList.add("desmos-bond-modified");
+
+  if (graphId === getGraphId()) {
+    return;
+  }
+
+  const importedSentinel = `import(${graphId})`;
+  if (Calc.getExpressions().find(expr => expr.id.startsWith(importedSentinel))) {
+    const clearImportsOption = constructDropdownOption("dcg-icon-undo", "Clear imports", true);
+    function clearImportsClick() {
+      clearImportsFrom(graphId);
+      closeModal();
+    }
+    clearImportsOption.addEventListener("click", clearImportsClick);
+    clearImportsOption.addEventListener("keydown", clearImportsClick);
+    evt.detail.dropdown.appendChild(clearImportsOption);
+  }
+
+  const importOption = constructDropdownOption("dcg-icon-insert", "Import");
+  async function importClick() {
+    importExpressions(await fetchGraph(graphId));
+    closeModal();
+  }
+  importOption.addEventListener("click", importClick);
+  importOption.addEventListener("keydown", importClick);
+
+  evt.detail.dropdown.appendChild(importOption);
 }
 
 async function fetchGraph(graphId) {
@@ -145,6 +248,37 @@ function importExpressions(graph) {
   });
 }
 
+function clearImportsFrom(graphId) {
+  const state = structuredClone(Calc.getState());
+  const importSentinel = `import(${graphId})`;
+  const importedFolders = [];
+  const reusedFolders = [];
+  for (let i = 0; i < state.expressions.list.length; i++) {
+    const expression = state.expressions.list[i];
+    if (expression.id.startsWith(importSentinel)) {
+      if (expression.type == "folder") {
+        importedFolders.push(expression);
+        continue;
+      }
+      state.expressions.list.splice(i, 1);
+      i--;
+    } else if (expression.folderId && expression.folderId.startsWith(importSentinel)) {
+      reusedFolders.push(expression.folderId);
+      expression.folderId = expression.folderId.substr(6);
+    }
+
+  }
+  for (const importedFolder of importedFolders) {
+    if (reusedFolders.includes(importedFolder.id)) {
+      importedFolder.id = importedFolder.id.substr(6);
+    } else {
+      state.expressions.list = state.expressions.list.filter(e => e !== importedFolder);
+    }
+  }
+
+  Calc.setState(state);
+}
+
 function getFunctionCallFromNote(note) {
   const result = /(.+)\((.+)\);/gm.exec(note);
   if (result === null) {
@@ -212,3 +346,7 @@ document.addEventListener("desmos-bond-edit-mode-activated", () => {
 document.addEventListener("desmos-bond-edit-mode-deactivated", () => {
   document.removeEventListener("desmos-bond-expressions-in-dom-updated", modifyEditActions);
 });
+
+document.addEventListener("desmos-bond-share-container-opened", modifyShareModal);
+
+document.addEventListener("desmos-bond-saved-graphs-shared-options-dropdown-opened", modifySavedGraphOptions);

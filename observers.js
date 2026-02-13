@@ -148,3 +148,39 @@ new MutationObserver((_, observer) => {
   expressionsInDOMUpdatedEvent.detail.span = expressionEachTemplateSpan;
   document.dispatchEvent(expressionsInDOMUpdatedEvent);
 }).observe(expressionEachTemplateSpan, { childList: true })
+
+const savedGraphsSharedOptionsDropDownOpenedEvent = new CustomEvent("desmos-bond-saved-graphs-shared-options-dropdown-opened", {
+  detail: {
+    observer: null,
+    savedGraphsLoadedDetail: null,
+    dropdown: null
+  }
+})
+function observeSharedOptionsDropDown(evt) {
+  new MutationObserver((mutationsList, observer) => {
+    for (const mutation of mutationsList) {
+      if (mutation.type !== "childList") {
+        continue;
+      }
+
+      for (const newNode of mutation.addedNodes) {
+        if (newNode.nodeType !== Node.ELEMENT_NODE) {
+          continue;
+        }
+
+        const dropdown = evt.detail.graphsContainer.querySelector(".dcg-shared-options-dropdown");
+        if (!dropdown) {
+          continue;
+        }
+
+        savedGraphsSharedOptionsDropDownOpenedEvent.detail.observer = observer;
+        savedGraphsSharedOptionsDropDownOpenedEvent.detail.savedGraphsLoadedDetail = evt.detail;
+        savedGraphsSharedOptionsDropDownOpenedEvent.detail.dropdown = dropdown;
+        document.dispatchEvent(savedGraphsSharedOptionsDropDownOpenedEvent);
+        break;
+      }
+    }
+  }).observe(evt.detail.graphsContainer.parentNode, { childList: true, subtree: true });
+}
+
+document.addEventListener(savedGraphsLoadedEvent.type, observeSharedOptionsDropDown);
