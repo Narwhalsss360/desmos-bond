@@ -11,7 +11,10 @@
     ],
     "content_scripts": [
         {
-            "matches": ["https://www.desmos.com/calculator/*"],
+            "matches": [
+                "https://www.desmos.com/calculator/*",
+                "https://www.desmos.com/3d/*"
+            ],
             "js": ["injector.js"]
         }
     ]
