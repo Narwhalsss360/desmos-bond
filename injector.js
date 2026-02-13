@@ -7,3 +7,4 @@ function injectScript(path) {
 }
 
 const desmosScript = injectScript("desmos.js")
+const observersScript = injectScript("observers.js")
