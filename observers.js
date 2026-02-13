@@ -109,7 +109,7 @@ new MutationObserver((mutationsList, observer) => {
 }).observe(shareContainer, { childList: true });
 
 const addExpressionContainer = document.querySelector(".dcg-add-expression-container");
-const addExpressionContainerOpenedEvent = new CustomEvent("desmos-bond-add-expressions-container-opened", {
+const addExpressionContainerOpenedEvent = new CustomEvent("desmos-bond-add-expression-container-opened", {
   detail: {
     observer: null,
     container: null,

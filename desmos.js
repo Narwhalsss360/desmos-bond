@@ -3,7 +3,11 @@ function toggleEditMode() {
 }
 
 function closeModal() {
-  document.querySelector(".dcg-shared-close-cross").dispatchEvent(new Event("dcg-tap"));
+  document.querySelector(".dcg-shared-close-cross")?.dispatchEvent(new Event("dcg-tap"));
+}
+
+function toggleAddExpressionDropdown() {
+  document.querySelector(".dcg-add-expression-container").children[0].dispatchEvent(new Event("dcg-tap"));
 }
 
 function findParent(elem, predicate) {
@@ -24,7 +28,7 @@ function getGraphTitle() {
 let cachedId = null;
 function getGraphId() {
   if (cachedId === null) {
-    cachedId = JSON.parse(document.body.getAttribute("data-load-data")).graph.hash;
+    cachedId = JSON.parse(document.body.getAttribute("data-load-data"))?.graph?.hash;
   }
   return cachedId;
 }
@@ -79,6 +83,17 @@ function constructDropdownOption(iconClass, text, red = false) {
   listitem.className = "dropdown-option-container";
   listitem.innerHTML = String.raw`<div role="link" tabindex="0" id="option-duplicate" class="${(red ? "dcg-red-dropdown-option" : "dcg-standard-link-styling")} dcg-dropdown-choice" ontap=""><div class="dcg-option-icon-container"><i aria-hidden="true" class="${iconClass}" dcg-option-icon"></i></div><span class="option-title"><span class="dcg-mixed-text-math"><span class="dcg-label-raw-text">${text}</span></span></span></div>`;
   return listitem;
+}
+
+function constructAddExpressionOption(iconClass, text) {
+  const addExpressionContainer = document.createElement("div");
+  addExpressionContainer.className = "dcg-new-item dcg-do-not-blur";
+  addExpressionContainer.role = "button";
+  addExpressionContainer.tabIndex = 0;
+  addExpressionContainer.toggleAttribute("ontap");
+  addExpressionContainer.ariaLabel = text;
+  addExpressionContainer.innerHTML = String.raw`<div class="dcg-expression-icon__container" aria-hidden="true"><i class="${iconClass}" aria-hidden="true"></i></div>${text}`;
+  return addExpressionContainer;
 }
 
 function modifyEditActions() {
@@ -174,6 +189,33 @@ function modifySavedGraphOptions(evt) {
   importOption.addEventListener("keydown", importClick);
 
   evt.detail.dropdown.appendChild(importOption);
+}
+
+function modidyAddExpressionOptions(evt) {
+  const insertLatexOption = constructAddExpressionOption("dcg-icon-title", "latex");
+  function insertLatexOptionClick() {
+    Calc.setExpression({
+      type: "text",
+      text: "latex("
+    });
+    toggleAddExpressionDropdown();
+  }
+  insertLatexOption.addEventListener("click", insertLatexOptionClick);
+  insertLatexOption.addEventListener("keydown", insertLatexOptionClick);
+  evt.detail.interior.appendChild(insertLatexOption);
+
+  const importOption = constructAddExpressionOption("dcg-icon-insert", "import");
+  function importOptionClick() {
+    Calc.setExpression({
+      type: "text",
+      text: "import("
+    });
+    toggleAddExpressionDropdown();
+  }
+  importOption.addEventListener("click", importOptionClick);
+  importOption.addEventListener("keydown", importOptionClick);
+  evt.detail.interior.appendChild(importOption);
+
 }
 
 async function fetchGraph(graphId) {
@@ -350,3 +392,5 @@ document.addEventListener("desmos-bond-edit-mode-deactivated", () => {
 document.addEventListener("desmos-bond-share-container-opened", modifyShareModal);
 
 document.addEventListener("desmos-bond-saved-graphs-shared-options-dropdown-opened", modifySavedGraphOptions);
+
+document.addEventListener("desmos-bond-add-expression-container-opened", modidyAddExpressionOptions);
