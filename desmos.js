@@ -322,11 +322,19 @@ function clearImportsFrom(graphId) {
 }
 
 function getFunctionCallFromNote(note) {
-  const result = /(.+)\((.+)\);/gm.exec(note);
-  if (result === null) {
+  if (!note.endsWith(");")) {
     return [null, null];
-  };
-  return result.toSpliced(0, 1);
+  }
+
+  const openIndex = note.indexOf("(");
+  if (openIndex === -1 || openIndex === 0) {
+    return [null, null];
+  }
+
+  return [
+    note.substring(0, openIndex),
+    note.substring(openIndex + 1, note.length - 2)
+  ];
 }
 
 function dispatchListener(evt) {
