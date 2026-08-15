@@ -215,7 +215,6 @@ function modidyAddExpressionOptions(evt) {
   importOption.addEventListener("click", importOptionClick);
   importOption.addEventListener("keydown", importOptionClick);
   evt.detail.interior.appendChild(importOption);
-
 }
 
 async function fetchGraph(graphId) {

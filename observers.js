@@ -122,7 +122,7 @@ new MutationObserver((mutationsList, observer) => {
       if (newNode.nodeType !== Node.ELEMENT_NODE) {
         continue;
       }
-      const addExpressionInterior = newNode.querySelector(".dcg-dropdown-popover__interior");
+      const addExpressionInterior = newNode.querySelector(".dcg-add-expression-menu");
       if (!addExpressionInterior) {
         continue;
       }
